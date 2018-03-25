@@ -1,0 +1,415 @@
+
+##-----------------------------------Ratings Effect on Sales-----------------------------##
+library(data.table)
+
+df_salesmodel2 <- fread("Please4.csv")
+df_salesmodel2[is.na(df_salesmodel2)] <- 0
+
+
+test3 = lm(log(df_salesmodel2$Sales_rank +1) ~ df_salesmodel2$Rating)
+summary(test3)
+
+test4 = lm(log(df_salesmodel2$Sales_rank +1) ~ df_salesmodel2$Rating * df_salesmodel2$Google_Search + factor(df_salesmodel2$Item_ID))
+summary(test4)
+
+test5 = lm(log(df_salesmodel2$Sales_rank +1) ~ df_salesmodel2$Rating * df_salesmodel2$Google_Search-1 + factor(df_salesmodel2$Item_ID))
+summary(test5)
+
+test6 = lm(log(df_salesmodel2$Sales_rank +1) ~ df_salesmodel2$Rating * df_salesmodel2$Google_Search-1 + factor(df_salesmodel2$Item_ID) + df_salesmodel2$Real_name + df_salesmodel2$Verified_purchase + df_salesmodel2$Total_votes)
+summary(test6)
+
+test7 = lm(log(df_salesmodel2$Sales_rank +1) ~ df_salesmodel2$Rating * df_salesmodel2$Google_Search-1 + df_salesmodel2$Price_x + factor(df_salesmodel2$Item_ID))
+summary(test7)
+
+test8 = lm(log(df_salesmodel2$Sales_rank) ~ df_salesmodel2$Rating * df_salesmodel2$Google_Search-1 + df_salesmodel2$Price_x + df_salesmodel2$Real_name + df_salesmodel2$Verified_purchase + df_salesmodel2$Total_votes +factor(df_salesmodel2$Item_ID))
+summary(test8)
+
+test9 = lm(log(df_salesmodel2$Sales_rank+1) ~ df_salesmodel2$Rating*df_salesmodel2$Google_Search-1 + factor(df_salesmodel2$Item_ID) +df_salesmodel2$Verified_purchase)
+summary(test9)
+
+
+SalesRank = log(df_salesmodel2$Sales_rank[2:45959]+1)
+Rating = df_salesmodel2$Rating[1:45958]
+Search = df_salesmodel2$Google_Search[1:45958]
+Product = df_salesmodel2$Item_ID[1:45958]
+Purchase = df_salesmodel2$Verified_purchase[1:45958]
+RealName = df_salesmodel2$Real_name[1:45958]
+Price = df_salesmodel2$Price_x[1:45958]
+TotalVote = df_salesmodel2$Total_votes[1:45958]
+
+Model = lm(SalesRank ~ Rating*Search-1 + Product + Purchase +RealName + Price)
+options(max.print = 99999)
+summary(Model)
+print(Model)
+data.frame(summary(Model)$coef[summary(Model)$coef[,4]<=.05,c(1:4)])
+
+
+Model3 = lm(SalesRank ~ Rating*Search + Purchase +RealName + log(Price+1))
+summary(Model3)
+
+
+Model1 = lm(SalesRank ~ Rating + Search + Purchase +RealName + Price)
+summary(Model1)
+
+Model2 = lm(SalesRank ~ Rating  + Purchase +RealName + Price)
+summary(Model2)
+
+test10 = lm(log(df_salesmodel2$Sales_Money+1) ~ df_salesmodel2$Rating*df_salesmodel2$Google_Search-1 + factor(df_salesmodel2$Item_ID) +df_salesmodel2$Verified_purchase)
+           
+summary(test10)
+
+```
+
+
+
+```{r}
+#import the data (which cleaned by python)
+#review ID dataframe
+
+df_salesmodel <- fread("Please5.csv")
+
+test1 = lm(log(df_salesmodel$Sales_Rank) ~ df_salesmodel$Rating)
+summary(test1)
+
+test2 = lm(log(df_salesmodel$Sales_Money+1) ~ df_salesmodel$Rating)
+summary(test2)
+
+ind_fix = lm(log(df_salesmodel$Sales_Rank) ~ factor(df_salesmodel$Review_ID) + df_salesmodel$Rating )
+summary(ind_fix)
+
+ind_fix2= lm(log(df_salesmodel$Sales_Rank) ~ factor(df_salesmodel$Review_ID) + df_salesmodel$Rating* df_salesmodel$Google_Search-1)
+
+summary(ind_fix2)
+
+
+ind_fix3= lm(log(df_salesmodel$Sales_Rank) ~ factor(df_salesmodel$Review_ID) + df_salesmodel$Rating* df_salesmodel$Google_Search-1 + df_salesmodel$Real_name + df_salesmodel$Verified_purchase)
+
+summary(ind_fix3)
+
+
+
+```
+
+
+```{r}
+#graph
+
+hist(df_salesmodel$Google_Search)
+hist(log(df_salesmodel$Sales_Rank))
+hist(log(df_salesmodel$Sales_Rank))
+hist(df_salesmodel$Sales_Money+1)
+hist(log(df_salesmodel$Price+1))
+
+plotdata = df_salesmodel[1:240,]
+yhat = ind_fix3$fitted[1:240]
+library(car)
+
+scatterplot(yhat~plotdata$Rating | plotdata$Review_ID, boxplots=FALSE, xlab="Rating", ylab="Sales",smooth=FALSE)  > abline(lm(log(df_salesmodel$Sales_Rank)~df_salesmodel$Rating),lwd=3,col="red")
+
+
+par(mfrow = c(2, 2))  # Split the plotting panel into a 2 x 2 grid
+plot(ind_fix3)
+
+
+hist(log(df_salesmodel$Sales_Rank))
+hist(df_salesmodel$Sales_Money+1)
+hist(test6$coefficients[1:300], 30)
+
+
+
+```
+
+```{r}
+#test area
+
+#muti-colliner
+
+
+a = cbind(df_salesmodel2$Rating[1:45958], df_salesmodel2$Google_Search[1:45958], df_salesmodel2$Price_x[1:45958], df_salesmodel2$Real_name[1:45958], df_salesmodel2$Verified_purchase[1:45958], df_salesmodel2$Total_vote[1:45958])
+
+res <- cor(a)
+round(res, 2)
+
+#dwtest
+library(lmtest)
+dwtest(Model3) 
+
+#H_test
+bptest(test3)
+
+
+
+```
+
+
+
+
+```{r}
+#Random effect
+
+library(Formula)
+library(plm)
+
+
+df_salesmodel2$order = 1:45959
+prandom = plm(log(df_salesmodel2$Sales_rank+1)~df_salesmodel2$Rating+df_salesmodel2$Google_Search+df_salesmodel2$Rating*df_salesmodel2$Google_Search, data=df_salesmodel2, index=c("Item_ID","order"),model="random")
+summary(prandom)
+
+
+phtest(prandom,test9)
+
+```
+
+
+##-----------------------------Previous Net Rating Effect on Rating Evaluation------------------------##
+
+
+```{}
+
+library(MASS) 
+library(effects)
+
+rm(list=ls())
+
+dt_netrat = fread('Net_Ratings_Robust.csv')
+dt_exper = subset(dt_netrat, Total_Item_Reviews!=0)
+
+summary(dt_exper)
+
+hist(as.numeric(dt_exper$Rating))
+hist(dt_exper$Net_Rating)
+hist(log(dt_exper$Total_rvwr_reviews+1))
+hist(log(dt_exper$Total_Item_Reviews+1))
+hist(as.numeric(dt_exper$Verified_purchase))
+```
+
+```{r}
+#MULTICOLLINEARITY CHECK
+df3_bm<-data.frame(dt_exper$Rating,dt_exper$Net_Rating_Bucket,log(dt_exper$Total_rvwr_reviews+1),log(dt_exper$Total_Item_Reviews+1),dt_exper$Real_name,dt_exper$Verified_purchase,dt_exper$Recent_rating_mean,dt_exper$Recent_rating_SD,log(dt_exper$Total_helpful_votes_nmrtr+1), log(dt_exper$Total_helpful_votes_dnmtr+1), dt_exper$Price, dt_exper$TradeInValue)
+m3_bm<-as.matrix(cor(df3_bm))
+View(m3_bm)
+vif(m3_bm)
+#Recent_rating_mean, Total_helpful_votes_dnmtr, Total_helpful_votes_nmrtr have problematric multicollinearity
+```
+```
+
+```{r}
+#ORDERED PROBIT
+#Initial Model
+
+unique(dt_exper$Net_Rating_Bucket)
+#Experiment group 
+dt_exper$Net_Rating_Bucket <- factor(dt_exper$Net_Rating_Bucket, levels=c('B1.0', 'C2.0', 'D3.0', 'E4.0', 'F5.0'), labels=c('1.0', '2.0', '3.0', '4.0', '5.0'))
+dt_exper$Net_Rating_Bucket <- factor(dt_exper$Net_Rating_Bucket)
+is.factor(dt_exper$Net_Rating_Bucket)
+dt_exper <- within(dt_exper, Net_Rating_Bucket<-relevel(Net_Rating_Bucket, ref="4.0"))
+op_exper = polr(as.factor(Rating)~Net_Rating_Bucket+log(Total_rvwr_reviews+1)+log(Total_Item_Reviews+1)+Real_name+Verified_purchase+Recent_rating_SD+Price+TradeInValue, data=dt_exper, Hess=TRUE)
+summary(op_exper)
+
+exp(coef(op_exper)) #Net Bucket Rating of 1
+#The relative risk ratio of the product rating is .399 moving from 4 star previous net rating to 1 star
+#The relative risk ratio of the product rating is .244 moving from 4 star previous net rating to 2 star
+#The relative risk ratio of the product rating is .316 moving from 4 star previous net rating to 3 star
+#The relative risk ratio of the product rating is 1.63 moving from 4 star previous net rating to 5 star
+
+#Visualizing Results
+#NOTE: The X axis are factor variables with a reference category of 4-stars so be aware the order is not numeric
+dt_exper$Real_name <- as.numeric(dt_exper$Real_name)
+dt_exper$Verified_purchase <- as.numeric(dt_exper$Verified_purchase)
+plot(effect(term="Net_Rating_Bucket",mod=op_exper,xlevel=2),multiline=T)
+```
+
+```{r}
+#Model 2 
+#Net_Rating_Bucket and Total_rvwr_reviews interaction term (*reviewers with more reviews rate differently #than those with few reviews. Moe, and Schweidel (2011))
+
+
+op_exper2 = polr(as.factor(Rating)~Net_Rating_Bucket+log(Total_rvwr_reviews+1)+Net_Rating_Bucket*log(Total_rvwr_reviews+1)+log(Total_Item_Reviews+1)+Real_name+Verified_purchase+Recent_rating_SD+Price+TradeInValue, data=dt_exper, Hess=TRUE)
+summary(op_exper2)
+exp(coef(op_exper2))
+
+
+dt_exper$Real_name <- as.numeric(dt_exper$Real_name)
+dt_exper$Verified_purchase <- as.numeric(dt_exper$Verified_purchase)
+plot(effect(term="Net_Rating_Bucket*log(Total_rvwr_reviews+1)",mod=op_exper2,xlevel=2),multiline=T)
+
+
+exp(coef(op_exper))
+exp(coef(op_exper2))
+#Conclusion: Effect of previous net ratings on rating evaluation is significant and has a strong #sympathetic (conform to consensus opinion) for inexperienced reviewers and a slight unsympathetic effect #for experienced reviewers. Hypotheses 1 and 2 confirmed. 
+#Price has essentially zero effect on ratings which is also valuable information.
+```
+
+#Experienced Reviewer vs Inexperienced Reviewer Groups Drilldown
+```{r}
+#Experienced Reviewer
+
+dt_expr_rvwr = subset(dt_exper, Total_rvwr_reviews>7)
+dt_expr_rvwr$Net_Rating_Bucket <- factor(dt_expr_rvwr$Net_Rating_Bucket, levels=c('B1.0', 'C2.0', 'D3.0', 'E4.0', 'F5.0'), labels=c('1.0', '2.0', '3.0', '4.0', '5.0'))
+dt_expr_rvwr$Net_Rating_Bucket <- factor(dt_expr_rvwr$Net_Rating_Bucket)
+dt_expr_rvwr$Rating <- factor(dt_expr_rvwr$Rating)
+is.factor(dt_expr_rvwr$Net_Rating_Bucket)
+summary(dt_expr_rvwr)
+dt_expr_rvwr <- within(dt_expr_rvwr, Net_Rating_Bucket<-relevel(Net_Rating_Bucket, ref="4.0"))
+
+op_expr_rvwr = polr(as.factor(Rating)~Net_Rating_Bucket+log(Total_Item_Reviews+1)+Real_name+Verified_purchase+Recent_rating_SD+log(Total_helpful_votes_nmrtr+1)+Price+TradeInValue, data=dt_expr_rvwr, Hess=TRUE)
+summary(op_expr_rvwr)
+
+
+dt_expr_rvwr$Real_name <- as.numeric(dt_expr_rvwr$Real_name)
+dt_expr_rvwr$Verified_purchase <- as.numeric(dt_expr_rvwr$Verified_purchase)
+plot(effect(term="Net_Rating_Bucket",mod=op_expr_rvwr,xlevel=2))
+
+#Inexperienced Group
+dt_inexp_rvwr = subset(dt_exper, Total_rvwr_reviews<7)
+
+is.factor(dt_inexp_rvwr$Net_Rating_Bucket)
+summary(dt_inexp_rvwr)
+
+op_inexp_rvwr = polr(as.factor(Rating)~Net_Rating_Bucket+log(Total_Item_Reviews+1)+log(Total_rvwr_reviews+1)+Real_name+Verified_purchase+Recent_rating_SD+Price+TradeInValue, data=dt_inexp_rvwr, Hess=TRUE)
+summary(op_inexp_rvwr)
+
+dt_inexp_rvwr$Real_name <- as.numeric(dt_inexp_rvwr$Real_name)
+dt_inexp_rvwr$Verified_purchase <- as.numeric(dt_inexp_rvwr$Verified_purchase)
+plot(effect(term="Net_Rating_Bucket",mod=op_inexp_rvwr,xlevel=2))
+
+exp(coef(op_expr_rvwr))
+exp(coef(op_inexp_rvwr))
+#Comparing the risk ratios for experienced group vs inexperienced group further strengthens the argument #for hypothesis 2 that reviewer experience induces an unsympathetic effect of previous net rating on #rating evaluation. For example, the experienced reviewers are more likely to rate lower (1.48) at a #previous net rating of 5 ("Net_Rating_Bucket5.0"), than their less experienced counterparts (1.84).
+
+```
+
+
+
+##---------------------------------------SEGMENTATION##---------------------------------------##
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+```{r}
+
+rm(list=ls())       # Remove anything that might currently be in memory so we can start fresh.
+library(data.table) # Load the data.table package.
+library(MASS)  # Load the MASS package
+library(tidyverse)  # data manipulation
+library(cluster)    # clustering algorithms
+library(factoextra) # clustering algorithms & visualization 
+mydata <- fread('Final_Merged_Data.csv')
+```
+# Taking a copy of the dataset to perform k-means and try to find the optimal number of clusters
+copy<-data.table(mydata)
+
+# Removing all the columns we won't need for clustering
+copy$pricecat_1301to1500<- NULL     # this one has very little variation.
+copy$Item_ID <- NULL 
+copy$Reviewer_ID<- NULL
+copy$Verified_purchase<- NULL
+copy$Rating<- NULL 
+copy$Lowest_Refurbished_Price_week1<- NULL 
+copy$Total_new_week1<- NULL
+copy$Total_used_week1<- NULL 
+copy$Total_reviews<- NULL
+copy$prVerified_purchase<- NULL
+copy$Price_week1<- NULL
+
+# Scaling the data
+copy <- as.data.frame(scale(copy))
+
+# K-means
+k3 <- kmeans(copy, centers = 3, nstart = 25)
+str(k3)
+k3
+
+# Cluster plot
+fviz_cluster(k3, data = copy) 
+
+# Calculating different k-means to compare with each other
+k4 <- kmeans(copy, centers = 4, nstart = 25)
+k5 <- kmeans(copy, centers = 5, nstart = 25)
+k6 <- kmeans(copy, centers = 6, nstart = 25)
+
+# Plots to compare
+p1 <- fviz_cluster(k3, geom = "point", data = copy) + ggtitle("k = 3")
+p2 <- fviz_cluster(k4, geom = "point",  data = copy) + ggtitle("k = 4")
+p3 <- fviz_cluster(k5, geom = "point",  data = copy) + ggtitle("k =5")
+p4 <- fviz_cluster(k6, geom = "point",  data = copy) + ggtitle("k = 6")
+
+# Ploting the above comparison. This plot says that in case of 3 clusters the clusters are devided more clearly than in case of 4,5,6, clasters.
+library(gridExtra)
+grid.arrange(p1, p2, p3, p4, nrow = 2)
+
+
+# DETERMINING the optimal number of clusters
+
+set.seed(123)
+
+# function to compute total within-cluster sum of square 
+wss <- function(k) {
+  kmeans(copy, k, nstart = 10 )$tot.withinss
+}
+
+# Compute and plot wss for k = 1 to k = 15
+k.values <- 1:15
+
+# extract wss for 2-15 clusters
+wss_values <- map_dbl(k.values, wss)
+
+# Elbow method. Based in this graphlooks like we should choose 2 clusters, but since that is too little we will go ahead with 3 clusters like the above plot suggested.
+plot(k.values, wss_values,
+       type="b", pch = 19, frame = FALSE, 
+       xlab="Number of clusters K",
+       ylab="Total within-clusters sum of squares")
+
+# EXCTRACTING THE RESULTS
+
+# Compute k-means clustering with k = 4
+set.seed(123)
+final <- kmeans(copy, 3, nstart = 25)
+print(final)
+
+# visualizing the above clusters again
+fviz_cluster(final, data = copy)
+
+#extract the clusters and add to our initial data to do some descriptive statistics at the cluster level:
+copy %>%
+  mutate(Cluster = final$cluster) %>%
+  group_by(Cluster) %>%
+  summarise_all("mean")
+
+
+# ------ ACTUAL K-MEANS CLUSTERING (we are proceeeding with 3 clusters)--------
+
+# Reading the original data again for performing the clustering
+mydata <- fread('Final_Merged_Data.csv')
+
+# Choosing the basis variables
+basisvars = names( mydata[, grep("pr", names(mydata)), with=FALSE ] )
+basisvars
+
+# Checking the variations of the variables
+diag( var( mydata[, ..basisvars] ))
+
+# From the above we can see that basis variable "pricecat_1301to1500" has very small variation , so we'll remove it.
+basisvars = basisvars[-13]
+
+# Scaling the basis variables and renaming them
+basisvars_n = paste0(basisvars, "_n")   
+mydata[, (basisvars_n) := lapply(.SD, function(x) (x- mean(x))/sd(x)), .SDcols=basisvars ]
+
+# Check normalization
+diag( var( mydata[, ..basisvars_n] ))
+
+# Running K-Means clustering
+km <- kmeans( mydata[, ..basisvars_n], 3)
+
+# Add the k-means classifications to our data.table
+mydata[, seg := km$cluster]
+
+# Number of observations in each cluster
+mydata[, .N, seg][order(seg)] 
+
+# SHowing the k-means results
+mydata[, lapply(.SD,mean), seg, .SDcols = basisvars_n][order(seg)]
+
+
